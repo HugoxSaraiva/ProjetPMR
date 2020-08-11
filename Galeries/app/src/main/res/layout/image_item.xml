@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/imageConstraintLayout"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/layout_height_big"
+        android:layout_marginStart="@dimen/padding_short"
+        android:layout_marginTop="@dimen/padding_short"
+        android:layout_marginEnd="@dimen/padding_short"
+        android:layout_marginBottom="@dimen/padding_short"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <EditText
+            android:id="@+id/editableImageText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/padding_short"
+            android:layout_marginTop="@dimen/padding_short"
+            android:layout_marginEnd="@dimen/padding_short"
+            android:layout_marginBottom="@dimen/padding_short"
+            android:ems="10"
+            android:inputType="text"
+            android:text="Legende"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+            android:visibility="invisible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/imageView" />
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/padding_short"
+            android:layout_marginTop="@dimen/padding_short"
+            android:layout_marginEnd="@dimen/padding_short"
+            android:layout_marginBottom="@dimen/padding_short"
+            android:ems="10"
+            android:text="Legende"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/imageView"
+            tools:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="@dimen/padding_short"
+            android:layout_marginTop="@dimen/padding_short"
+            android:layout_marginEnd="@dimen/padding_short"
+            app:layout_constraintDimensionRatio="2:1"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/deleteImageButton"
+            style="@android:style/Widget.Material.ImageButton"
+            android:layout_width="@dimen/button_width"
+            android:layout_height="@dimen/button_height"
+            android:background="@drawable/ic_baseline_delete_forever_24"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@+id/likeButton"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="visible" />
+
+        <ToggleButton
+            android:id="@+id/likeButton"
+            style="@style/toggleButton"
+            android:layout_width="@dimen/button_width"
+            android:layout_height="@dimen/button_height"
+            android:layout_gravity="start"
+            android:background="@drawable/ic_toggle_background"
+            android:checked="false"
+            android:visibility="invisible"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

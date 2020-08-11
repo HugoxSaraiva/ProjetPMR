@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".activity.MainActivity">
+    <item
+        android:id="@+id/modifyAction"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:title="@string/action_toggle_modify"
+        android:visible="false"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/logout"
+        android:title="@string/action_logout"
+        android:visible="false" />
+</menu>

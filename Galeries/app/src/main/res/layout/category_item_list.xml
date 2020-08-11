@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/layout_height">
+
+    <FrameLayout
+        android:id="@+id/listFrameLayout"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="@dimen/padding_short"
+        android:layout_marginTop="@dimen/padding_short"
+        android:layout_marginEnd="@dimen/padding_short"
+        android:layout_marginBottom="@dimen/padding_short"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0">
+
+    </FrameLayout>
+
+    <Button
+        android:id="@+id/categoryButton"
+        style="@style/Widget.AppCompat.Button.Borderless"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_short"
+        android:text="Button"
+        android:textAlignment="viewStart"
+        app:layout_constraintBottom_toBottomOf="@+id/listFrameLayout"
+        app:layout_constraintEnd_toEndOf="@+id/listFrameLayout"
+        app:layout_constraintStart_toStartOf="@+id/listFrameLayout"
+        app:layout_constraintTop_toTopOf="@+id/listFrameLayout" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
