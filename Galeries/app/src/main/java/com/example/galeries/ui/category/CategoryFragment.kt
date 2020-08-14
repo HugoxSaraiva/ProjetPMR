@@ -20,7 +20,8 @@ import com.example.galeries.R
 import com.example.galeries.data.Repository
 import com.example.galeries.data.model.Category
 import com.example.galeries.ui.adapter.CategoryAdapter
-import com.example.galeries.ui.adapter.GaleryImageAdapter
+import com.example.galeries.ui.adapter.GalleryImageAdapter
+import com.example.galeries.utilities.UseMode
 import com.example.galeries.utilities.hideKeyboard
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.android.synthetic.main.fragment_show_category.*
@@ -65,6 +66,7 @@ class CategoryFragment : Fragment(), CategoryAdapter.ActionListener {
         preferences = PreferenceManager.getDefaultSharedPreferences(this.context)
         addCategoryButton.setOnClickListener {
             if (!addCategoryText.text.isNullOrBlank()) {
+                hideKeyboard()
                 categoryViewModel.addCategory(addCategoryText.text.toString())
             }
         }
@@ -104,10 +106,17 @@ class CategoryFragment : Fragment(), CategoryAdapter.ActionListener {
         return super.onOptionsItemSelected(item)
     }
 
-    override fun onItemClicked(category: Category) {
-        Log.d("OnItemClicked","Category : ${category.id}")
+    override fun onCategoryClick(
+        category: Category,
+        toMode: UseMode
+    ) {
+        categoryViewModel.setMode(category.id, toMode)
+        if (toMode == UseMode.SHOW) {
+            categoryViewModel.getImagesList(category.id)
+        }
         updateRecyclerView()
-        categoryViewModel.getImagesList(category.id)
+        Log.d("onItemShowClick","Category : ${category.id}, mode : $toMode")
+
     }
 
     override fun categoryTitleChanged(categoryId: Int, newTitle: String) {
@@ -118,8 +127,8 @@ class CategoryFragment : Fragment(), CategoryAdapter.ActionListener {
 
 
     override fun addImage(categoryId: Int, url: String, description: String) {
-        categoryViewModel.addImage(categoryId,url,description)
         hideKeyboard()
+        categoryViewModel.addImage(categoryId,url,description)
     }
 
     private fun initCategoryRecyclerView() {
@@ -139,7 +148,6 @@ class CategoryFragment : Fragment(), CategoryAdapter.ActionListener {
         activityScope.launch {
             categoryAdapter.showData(categoryList)
         }
-
     }
 
     private fun toggleEditMode() {
@@ -178,14 +186,15 @@ class CategoryFragment : Fragment(), CategoryAdapter.ActionListener {
         Log.d("imageDeleted","image id : $imageId")
     }
 
-    override fun onLikeImage(imageId: Int) {
-        categoryViewModel.likeImage(imageId)
-        Log.d("imageLiked","image id : $imageId")
-    }
+    override fun onLikeImage(imageId: Int, isChecked: Boolean) {
+        if (isChecked) {
+            categoryViewModel.likeImage(imageId)
+            Log.d("imageLiked","image id : $imageId")
+        } else {
+            categoryViewModel.dislikeImage(imageId)
+            Log.d("imageDisliked","image id : $imageId")
+        }
 
-    override fun onDislikeImage(imageId: Int) {
-        categoryViewModel.dislikeImage(imageId)
-        Log.d("imageDisliked","image id : $imageId")
     }
 
     override fun onDeleteCategory(categoryId: Int) {
@@ -194,27 +203,46 @@ class CategoryFragment : Fragment(), CategoryAdapter.ActionListener {
     }
 
     override fun bindAdapterToImageList(
-        adapter: GaleryImageAdapter,
         recyclerView: RecyclerView
     ) {
+        // Remove previous observers to the imageList
+        if (categoryViewModel.imageListResult.hasObservers()) {
+            categoryViewModel.imageListResult.removeObservers(viewLifecycleOwner)
+        }
+        // Set new observer for current category
         categoryViewModel.imageListResult.observe(viewLifecycleOwner,
             Observer {galleryImageList ->
                 if (galleryImageList == null){
                     recyclerView.visibility = View.INVISIBLE
                     return@Observer
                 }
-                adapter.showData(galleryImageList)
-                recyclerView.visibility = View.VISIBLE
+                val adapter = recyclerView.adapter as GalleryImageAdapter
+                if (recyclerView.visibility != View.VISIBLE) {
+                    adapter.showData(galleryImageList)
+                    recyclerView.visibility = View.VISIBLE
+                } else {
+                    adapter.notifyDataSetChanged()
+                }
             }
         )
     }
 
-    override fun forceOthersToListMode() {
-        categoryViewModel.toggleListMode()
-    }
+//    override fun forceOthersToListMode() {
+//        categoryViewModel.toggleListMode()
+//    }
 
     override fun clearImagesList() {
         categoryViewModel.clearImagesList()
+        updateRecyclerView()
+    }
+
+    override fun imageDroppedOnCategory(
+        imageId: Int,
+        categoryId: Int
+    ) {
+        categoryViewModel.changeImageCategory(imageId, categoryId)
+        Log.d("CategoryChange","Changing image $imageId to category $categoryId")
+
     }
 
 }

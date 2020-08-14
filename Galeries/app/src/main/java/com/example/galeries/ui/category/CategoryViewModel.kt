@@ -113,6 +113,7 @@ class CategoryViewModel: ViewModel() {
     fun changeImageCategory(imageId: Int, categoryId: Int) {
         repository.changeImageCategory(imageId, categoryId){
             if (it is Result.Success) {
+                Log.d("ChangeCategory", "Success changing image, getting cached image list")
                 getCachedImageList()
             }
         }
@@ -132,7 +133,17 @@ class CategoryViewModel: ViewModel() {
         }
     }
 
-    fun toggleListMode() {
+    fun setMode(categoryId: Int, mode: UseMode){
+        // Sets other categories to List mode and then sets the selected category to showMode
+        toggleListMode()
+        if (mode == UseMode.SHOW) {
+            _categoryListResult.value?.first { it.id == categoryId }.apply {
+                this?.useMode = mode
+            }
+        }
+    }
+
+    private fun toggleListMode() {
         _categoryListResult.value?.forEach { category ->
             if (category.useMode == UseMode.SHOW) {
                 category.useMode = UseMode.LIST
@@ -140,6 +151,7 @@ class CategoryViewModel: ViewModel() {
         }
         clearImagesList()
     }
+
 
     fun clearImagesList(){
         _imageListResult.value = null
@@ -150,11 +162,13 @@ class CategoryViewModel: ViewModel() {
     }
 
     private fun getCachedCategoryList(): List<Category> {
+        _categoryListResult.value = null
         _categoryListResult.value = repository.categoryList
         return repository.categoryList
     }
 
     private fun getCachedImageList(): List<GalleryImage> {
+        _imageListResult.value = null
         _imageListResult.value = repository.imageList
         return repository.imageList
     }

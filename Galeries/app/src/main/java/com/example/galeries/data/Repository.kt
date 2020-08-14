@@ -23,6 +23,7 @@ object Repository {
 
     var imageList = mutableListOf<GalleryImage>()
         private set
+    private var likedImageList = mutableListOf<GalleryImage>()
 
     private var coupsDeCoeur : Category? = null
 
@@ -58,11 +59,13 @@ object Repository {
                 mutableList.apply {
                     addAll(result.data)
                 }
+                // Only a logged in user has a Coups de Coeur category, then put it in front of the list
                 user?.let {
                     coupsDeCoeur = result.data.first { it.estCoupsDeCoeur }.also {
                         mutableList.remove(it)
                         mutableList.add(0,it)
                     }
+                    loadLikedList()
                 }
                 setCategoryList(mutableList)
                 onResult(Result.Success(mutableList))
@@ -74,12 +77,40 @@ object Repository {
     }
 
     fun getImages(categoryId: Int, onResult: (Result<List<GalleryImage>>) -> Unit) {
+        // Get images for selected category and checks if the current item is in the likedList
         dataSource.getImages(categoryId) {
             if (it is Result.Success) {
+                // Repository received the image list, now it checks if images are liked
+                it.data.forEach{image ->
+                    image.isLiked = false
+                }
+                if (likedImageList.isNotEmpty()) {
+                    it.data.forEach { image ->
+                        likedImageList.forEach { likedImage ->
+                            if (image.id == likedImage.id) {
+                                image.isLiked = true
+                            }
+                        }
+                    }
+                }
                 setImageList(it.data)
                 Log.d("getImages","Function call, result : ${it.data}")
+                onResult(it)
+            } else {
+                Log.d("getImages","Function call, error receiving response for category $categoryId")
+                if (categoryId == coupsDeCoeur?.id && likedImageList.isNotEmpty()) {
+                    /*
+                    * Since the request for the coups de coeur category is currently unavailable
+                    * this piece of code loads the current session liked images
+                    * */
+                    Log.d("getImages","Using cached list for Coups de Coeur")
+                    setImageList(likedImageList)
+                    onResult(Result.Success(likedImageList))
+                } else {
+                    onResult(it)
+                }
             }
-            onResult(it)
+
         }
     }
 
@@ -93,7 +124,7 @@ object Repository {
                     id = id,
                     titre = currentTitle,
                     idUser = user!!.idUser,
-                    useMode = UseMode.LIST,
+                    useMode = UseMode.EDIT,
                     estCoupsDeCoeur = (coupdecoeur == 1)
                 )
                 categoryList.add(categoryItem)
@@ -113,7 +144,11 @@ object Repository {
         }
     }
 
-    fun renameCategory(categoryId: Int, newName: String, onResult: (Result<SingleCategoryResponse>) -> Unit){
+    fun renameCategory(
+        categoryId: Int,
+        newName: String,
+        onResult: (Result<SingleCategoryResponse>) -> Unit
+    ){
         dataSource.renameCategory(categoryId, newName, user!!.hash){ result ->
             if (result is Result.Success) {
                 categoryList.first { it.id == categoryId }.titre = newName
@@ -143,7 +178,15 @@ object Repository {
     fun likeImage(imageId: Int, onResult: (Result<GalleryImage>) -> Unit) {
         dataSource.likeImage(imageId, user?.hash.toString()){ result ->
             if (result is Result.Success) {
-                imageList.first { it.id == result.data.id }.isLiked = true
+                val image = imageList.first { it.id == result.data.id }.apply {
+                    isLiked = true
+                }
+
+                // Make sure the item is added only 1 time on the list
+                likedImageList.filter { it.id == image.id }.forEach {
+                    likedImageList.remove(it)
+                }
+                likedImageList.add(image)
             }
             onResult(result)
         }
@@ -152,7 +195,16 @@ object Repository {
     fun dislikeImage(imageId: Int, onResult: (Result<GalleryImage>) -> Unit) {
         dataSource.dislikeImage(imageId, user?.hash.toString()){ result ->
             if (result is Result.Success) {
-                imageList.first { it.id == result.data.id }.isLiked = false
+                try {
+                    imageList.first { it.id == result.data.id }.apply {
+                        isLiked = false
+                    }
+                    likedImageList.filter { it.id == result.data.id }.forEach {
+                        likedImageList.remove(it)
+                    }
+                } catch (e: Throwable) {
+                    Log.d("Dislike Error", "Error while trying to dislike image")
+                }
             }
             onResult(result)
         }
@@ -168,10 +220,16 @@ object Repository {
         }
     }
 
-    fun changeImageCategory(imageId: Int, categoryId: Int, onResult: (Result<GalleryImage>) -> Unit) {
+    fun changeImageCategory(
+        imageId: Int,
+        categoryId: Int,
+        onResult: (Result<GalleryImage>) -> Unit
+    ) {
         dataSource.changeImageCategory(imageId,categoryId, user?.hash.toString()){ result ->
             if (result is Result.Success) {
-                imageList.remove(imageList.first { it.id == imageId })
+                val image = imageList.first { it.id == result.data.id }
+                imageList.remove(image)
+                Log.d("RemovingImage","ImageId = ${image.id}, reason : Image changed from category")
             }
             onResult(result)
         }
@@ -191,5 +249,23 @@ object Repository {
     private fun setImageList(list: List<GalleryImage>) {
         this.imageList.clear()
         this.imageList.addAll(list)
+    }
+
+    private fun loadLikedList() {
+        // If the Coups de coeur category exists and the likedImages list is empty, try to get current liked images
+        Log.d("loadLikedList","Function called")
+        coupsDeCoeur?.let {category ->
+            if (likedImageList.isEmpty()) {
+                dataSource.getImages(category.id) {
+                    if (it is Result.Success){
+                        likedImageList.clear()
+                        likedImageList.addAll(it.data)
+                        Log.d("loadLikedList","Success response for category ${category.id}")
+                    } else {
+                        Log.d("loadLikedList","Error receiving response for category ${category.id}")
+                    }
+                }
+            }
+        }
     }
 }

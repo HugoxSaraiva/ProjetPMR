@@ -5,5 +5,5 @@ data class GalleryImage(
     val idUser: Int,
     var legende: String = "",
     val url: String,
-    var isLiked : Boolean? = false
+    var isLiked : Boolean = false
 )

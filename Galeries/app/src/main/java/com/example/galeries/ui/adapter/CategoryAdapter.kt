@@ -1,6 +1,8 @@
 package com.example.galeries.ui.adapter
 
+import android.content.ClipDescription
 import android.util.Log
+import android.view.DragEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,28 +23,68 @@ import kotlinx.android.synthetic.main.category_item_list.view.*
 
 class CategoryAdapter(
     private val actionListener: ActionListener
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), GaleryImageAdapter.ActionListener {
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), GalleryImageAdapter.ActionListener {
 
-    private val categoryList: MutableList<Category> = mutableListOf()
+    private val dataSet: MutableList<Category> = mutableListOf()
     private val idUser: Int? = Repository.user?.idUser
+    private fun dragListener(onDrop: (Int, Int) -> Unit) = View.OnDragListener { view, event ->
+        when(event.action) {
+            DragEvent.ACTION_DRAG_STARTED -> {
+                // Checks if the view can receive the item
+                event.clipDescription.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)
+            }
+            DragEvent.ACTION_DRAG_ENTERED -> {
+                view.invalidate()
+                true
+            }
+            DragEvent.ACTION_DRAG_LOCATION -> true
+            DragEvent.ACTION_DRAG_EXITED -> {
+                view.invalidate()
+                true
+            }
+            DragEvent.ACTION_DROP -> {
+                val item = event.clipData.getItemAt(0)
+                val data = item.text.toString().split(",")
+                val imageId = data[0].toInt()
+                val position = data[1].toInt()
+                Log.d("DraggedData", "Drag Contents : $imageId")
 
-    override fun getItemCount(): Int = categoryList.size
+                view.invalidate()
+
+//                val v = event.localState as View
+//                val owner = v.parent as ViewGroup
+//                owner.removeView(v)
+//                view as ConstraintLayout
+
+                onDrop(imageId, position)
+                true
+            }
+            DragEvent.ACTION_DRAG_ENDED -> {
+                view.invalidate()
+                true
+            }
+            else -> false
+        }
+    }
+
+
+    override fun getItemCount(): Int = dataSet.size
 
     fun showData(newDataSet : List<Category>) {
-        categoryList.clear()
-        categoryList.addAll(newDataSet)
+        dataSet.clear()
+        dataSet.addAll(newDataSet)
         notifyDataSetChanged()
     }
 
     override fun getItemViewType(position: Int): Int {
-        return categoryList[position].useMode.value
+        return dataSet[position].useMode.value
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when(viewType) {
             UseMode.LIST.value -> {
-                ListViewHolder(
-                    LayoutInflater.from(parent.context).inflate(R.layout.category_item_list, parent, false)
+                ShowViewHolder(
+                    LayoutInflater.from(parent.context).inflate(R.layout.category_item_show, parent, false)
                 )
             }
             UseMode.EDIT.value -> {
@@ -55,10 +97,9 @@ class CategoryAdapter(
                     LayoutInflater.from(parent.context).inflate(R.layout.category_item_show, parent, false)
                 )
             }
-
             else -> {
-                ListViewHolder(
-                LayoutInflater.from(parent.context).inflate(R.layout.category_item_list, parent, false)
+                ShowViewHolder(
+                LayoutInflater.from(parent.context).inflate(R.layout.category_item_show, parent, false)
             )}
         }
     }
@@ -66,43 +107,14 @@ class CategoryAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         Log.d("ListAdapter", "onBindViewHolder $position")
         when (holder) {
-            is ListViewHolder -> {
-                holder.bind(categoryList[position])
-            }
             is EditViewHolder -> {
-                holder.bind(categoryList[position])
+                holder.bind(dataSet[position])
             }
             is ShowViewHolder -> {
-                holder.bind(categoryList[position])
+                holder.bind(dataSet[position])
             }
         }
 
-    }
-
-    inner class ListViewHolder(
-        itemView: View
-    ) : RecyclerView.ViewHolder(itemView) {
-        private val categoryButton: Button = itemView.categoryButton
-        private val layout = itemView.listFrameLayout
-
-        fun bind(category: Category) {
-            categoryButton.text = category.titre
-            categoryButton.setOnClickListener {
-                toggleLayout(category)
-                actionListener.onItemClicked(category)
-            }
-            if (category.estCoupsDeCoeur) {
-                layout.setBackgroundResource(R.drawable.coups_de_coeur_border)
-            } else {
-                layout.setBackgroundResource(getMarginColor(idUser, category.idUser))
-            }
-        }
-
-        private fun toggleLayout(category: Category) {
-            actionListener.forceOthersToListMode()
-            category.useMode = UseMode.SHOW
-            Log.d("ListViewHolder","${category.id} on Toggle to : ${category.useMode}")
-        }
     }
 
     inner class EditViewHolder(
@@ -112,6 +124,16 @@ class CategoryAdapter(
         private val categoryName = itemView.findViewById<TextInputEditText>(R.id.categoryNameText)
         private val deleteCategory = itemView.findViewById<ImageButton>(R.id.deleteCategoryButton)
         private val editLayout = itemView.findViewById<ConstraintLayout>(R.id.editConstraintLayout)
+
+        val category : Category?
+            get() {
+                val categoryPosition = adapterPosition
+                return if (categoryPosition != RecyclerView.NO_POSITION) {
+                    dataSet[categoryPosition]
+                } else {
+                    null
+                }
+            }
 
         fun bind(category: Category){
             deleteCategory.setOnClickListener {
@@ -137,6 +159,13 @@ class CategoryAdapter(
     inner class ShowViewHolder(
         itemView: View
     ) : RecyclerView.ViewHolder(itemView) {
+        // List Mode
+        private val listMainLayout = itemView.listConstraintLayout
+        private val categoryShowButton: Button = itemView.categoryButton
+        private val layout = itemView.listFrameLayout
+
+        // Show Mode buttons
+        private val showMainLayout = itemView.findViewById<ConstraintLayout>(R.id.showConstraintLayout)
         private val addImageLayout = itemView.findViewById<ConstraintLayout>(R.id.addImageConstraintLayout)
         private val imageRecyclerView = itemView.findViewById<RecyclerView>(R.id.imageList)
         private val categoryHideButton = itemView.findViewById<Button>(R.id.categoryHideButton)
@@ -144,72 +173,127 @@ class CategoryAdapter(
         private val addImageButton = itemView.findViewById<Button>(R.id.addImageButton)
         private val urlText = itemView.findViewById<TextInputEditText>(R.id.urlTextInput)
         private val descriptionText = itemView.findViewById<TextInputEditText>(R.id.descriptionTextInput)
-        private val showLayout = itemView.findViewById<ConstraintLayout>(R.id.showConstraintLayout)
-        private val galleryImageAdapter = newGalleryImageAdapter()
+        private val dropLayout = itemView.findViewById<ConstraintLayout>(R.id.dropItemBoundary)
 
-        init {
-            // Load recyclerView adapter
-            imageRecyclerView.apply {
-                layoutManager = LinearLayoutManager(itemView.context,RecyclerView.HORIZONTAL,false)
-                adapter = galleryImageAdapter
+        val category : Category?
+            get() {
+                val categoryPosition = adapterPosition
+                return if (categoryPosition != RecyclerView.NO_POSITION) {
+                    dataSet[categoryPosition]
+                } else {
+                    null
+                }
             }
+
+        // List Init
+        init {
+            categoryShowButton.setOnClickListener {
+                val categoryPosition = adapterPosition
+                if (categoryPosition != RecyclerView.NO_POSITION) {
+                    val clickedCategory = dataSet[categoryPosition]
+                    //toggleLayout(UseMode.SHOW)
+                    actionListener.onCategoryClick(clickedCategory,UseMode.SHOW)
+                    notifyItemChanged(categoryPosition)
+                }
+            }
+            listMainLayout.visibility = View.VISIBLE
+            showMainLayout.visibility = View.GONE
         }
 
-
-        fun bind(category: Category){
-
-            // Button used to toggle between list and show views
-            categoryHideButton.text = category.titre
+        // Show init
+        init {
             categoryHideButton.setOnClickListener {
-                actionListener.onItemClicked(category)
-                toggleLayout(category)
-            }
+                val categoryItemPosition = adapterPosition
+                if (categoryItemPosition != RecyclerView.NO_POSITION) {
+                    val clickedCategory = dataSet[categoryItemPosition]
+                    actionListener.onCategoryClick(clickedCategory,UseMode.LIST)
+                    notifyItemChanged(categoryItemPosition)
 
-            // If user is connected the button to show the addImageLayout must be visible
+                }
+            }
             idUser?.let {
-                showAddImageLayoutButton.visibility = View.VISIBLE
+                addImageButton.setOnClickListener {
+                    val categoryItemPosition = adapterPosition
+                    if (categoryItemPosition != RecyclerView.NO_POSITION) {
+                        val clickedCategoryItem = dataSet[categoryItemPosition]
+                        actionListener.addImage(
+                            clickedCategoryItem.id, urlText.text.toString(),
+                            descriptionText.text.toString()
+                        )
+                        urlText.setText("")
+                        descriptionText.setText("")
+                    }
+
+                }
                 showAddImageLayoutButton.setOnClickListener {
                     addImageLayout.visibility =
                         if (addImageLayout.visibility == View.GONE) {View.VISIBLE} else {View.GONE}
                 }
-                addImageButton.setOnClickListener {
-                    actionListener.addImage(
-                        category.id, urlText.text.toString(),
-                        descriptionText.text.toString()
-                    )
-                    urlText.setText("")
-                    descriptionText.setText("")
-                }
+            }
+        }
+
+        fun bind(category: Category){
+            val listVisibility = if (category.useMode == UseMode.LIST) {View.VISIBLE} else {View.GONE}
+            val showVisibility = if (category.useMode == UseMode.SHOW) {View.VISIBLE} else {View.GONE}
+            Log.d("bindCategory","categoryId : ${category.id} with List visibilitty = $listVisibility and ShowVisibility = $showVisibility")
+            listMainLayout.visibility = listVisibility
+            showMainLayout.visibility = showVisibility
+
+            if (showMainLayout.visibility == View.VISIBLE) {
+                actionListener.bindAdapterToImageList(imageRecyclerView)
             }
 
-            // Set category layout appropriate margin color
+            // List mode bindings
+            categoryShowButton.text = category.titre
             if (category.estCoupsDeCoeur) {
-                showLayout.setBackgroundResource(R.drawable.coups_de_coeur_border)
+                layout.setBackgroundResource(R.drawable.coups_de_coeur_border)
             } else {
-                showLayout.setBackgroundResource(getMarginColor(idUser, category.idUser))
+                layout.setBackgroundResource(getMarginColor(idUser, category.idUser))
             }
 
-            // Get image URL for given category
-            actionListener.bindAdapterToImageList(
-                galleryImageAdapter,
-                imageRecyclerView
-            )
+            // Button used to toggle between list and show views on the show view
+            categoryHideButton.text = category.titre
+
+            // If user is connected the button to show the addImageLayout must be visible
+            // Button must not be available for the Coups de Coeur category
+            if (!category.estCoupsDeCoeur && idUser != null) {
+                showAddImageLayoutButton.visibility = View.VISIBLE
+
+                // Set category layout appropriate margin color
+                showMainLayout.setBackgroundResource(getMarginColor(idUser, category.idUser))
+
+                // Set drag listener for non-Coups de coeur category
+                dropLayout.setOnDragListener(dragListener{imageId, position ->
+                    actionListener.imageDroppedOnCategory(imageId, category.id)
+                    val adapter = imageRecyclerView.adapter as GalleryImageAdapter
+                    adapter.notifyItemRemoved(position)
+                })
+            } else if (category.estCoupsDeCoeur) {
+                showAddImageLayoutButton.visibility = View.GONE
+                // Set category layout appropriate margin color
+                showMainLayout.setBackgroundResource(R.drawable.coups_de_coeur_border)
+            } else {
+                showAddImageLayoutButton.visibility = View.GONE
+                // Set category layout appropriate margin color
+                showMainLayout.setBackgroundResource(R.drawable.foreign_border)
+            }
+
+            // Load recyclerView adapter
+            imageRecyclerView.apply {
+                layoutManager = LinearLayoutManager(itemView.context,RecyclerView.HORIZONTAL,false)
+                adapter = newGalleryImageAdapter(category)
+            }
         }
 
-        private fun toggleLayout(category: Category) {
-            actionListener.clearImagesList()
-            category.useMode = UseMode.LIST
-            Log.d("ShowViewHolder","onToggle to : ${category.useMode}")
-        }
-
-        private fun newGalleryImageAdapter(): GaleryImageAdapter {
-            return GaleryImageAdapter(
-                actionListener = this@CategoryAdapter
+        private fun newGalleryImageAdapter(category: Category): GalleryImageAdapter {
+            return GalleryImageAdapter(
+                actionListener = this@CategoryAdapter,
+                category = category
             )
         }
 
     }
-    override fun onImageViewLoad(imageView: ImageView, url: String) {
+    override fun imageLoadRequest(imageView: ImageView, url: String) {
         actionListener.onImageViewLoad(imageView,url)
     }
 
@@ -221,30 +305,28 @@ class CategoryAdapter(
         actionListener.onDeleteImage(imageId)
     }
 
-    override fun onLikeImage(imageId: Int) {
-        actionListener.onLikeImage(imageId)
-    }
-
-    override fun onDislikeImage(imageId: Int) {
-        actionListener.onDislikeImage(imageId)
+    override fun onLikeImage(imageId: Int, isChecked: Boolean) {
+        actionListener.onLikeImage(imageId, isChecked)
     }
 
     interface ActionListener {
-        fun onItemClicked(category: Category)
+        fun onCategoryClick(
+            category: Category,
+            toMode: UseMode
+        )
         fun categoryTitleChanged(categoryId: Int, newTitle: String)
         fun addImage(categoryId: Int, url: String, description: String)
         fun onImageViewLoad(imageView: ImageView, url: String)
         fun onImageDescriptionChange(imageId: Int, description: String)
         fun onDeleteImage(imageId: Int)
-        fun onLikeImage(imageId: Int)
-        fun onDislikeImage(imageId: Int)
+        fun onLikeImage(imageId: Int, isChecked: Boolean)
         fun onDeleteCategory(categoryId: Int)
-        fun bindAdapterToImageList(
-            adapter: GaleryImageAdapter,
-            recyclerView: RecyclerView
-        )
-        fun forceOthersToListMode()
+        fun bindAdapterToImageList(recyclerView: RecyclerView)
         fun clearImagesList()
+        fun imageDroppedOnCategory(
+            imageId: Int,
+            categoryId: Int
+        )
     }
 
 
